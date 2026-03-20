@@ -1,5 +1,6 @@
 import { getRepoRoot, getRepoName } from "../compose/detect.js";
 import { getNonMainWorktrees } from "../git/worktree.js";
+import { resolveStableIndices } from "../state.js";
 import { composeProjectName } from "../utils/sanitize.js";
 import { exec, execSafe } from "../utils/exec.js";
 import * as log from "../utils/log.js";
@@ -8,12 +9,13 @@ export function cleanCommand(): void {
   const repoRoot = getRepoRoot();
   const repoName = getRepoName(repoRoot);
   const worktrees = getNonMainWorktrees(repoRoot);
+  const stableIndices = resolveStableIndices(repoRoot, worktrees);
 
   const currentWt = execSafe("git rev-parse --show-toplevel") ?? repoRoot;
 
   for (let i = 0; i < worktrees.length; i++) {
     const wt = worktrees[i];
-    const idx = i + 1;
+    const idx = stableIndices.get(wt.branch)!;
     const project = composeProjectName(repoName, idx, wt.branch);
 
     log.info(`Stopping containers for ${project}...`);

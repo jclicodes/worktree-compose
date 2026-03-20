@@ -20,7 +20,7 @@ export function startCommand(indices: number[]): void {
   const targets = filterWorktrees(ctx.worktrees, indices);
 
   for (const wt of targets) {
-    const idx = ctx.worktrees.indexOf(wt) + 1;
+    const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
     const allocations = allocateWorktreePorts(ctx.portMappings, idx);
 

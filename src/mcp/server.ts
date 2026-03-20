@@ -24,7 +24,7 @@ function startWorktrees(indices: number[]): string {
   const results: string[] = [];
 
   for (const wt of targets) {
-    const idx = ctx.worktrees.indexOf(wt) + 1;
+    const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
     const allocations = allocateWorktreePorts(ctx.portMappings, idx);
 
@@ -53,7 +53,7 @@ function stopWorktrees(indices: number[]): string {
   const results: string[] = [];
 
   for (const wt of targets) {
-    const idx = ctx.worktrees.indexOf(wt) + 1;
+    const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
 
     try {
@@ -69,14 +69,14 @@ function stopWorktrees(indices: number[]): string {
 
 function listWorktrees(): object {
   const ctx = buildContext();
-  return ctx.worktrees.map((wt, i) => {
-    const idx = i + 1;
+  return ctx.worktrees.map((wt) => {
+    const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
     const allocations = allocateWorktreePorts(ctx.portMappings, idx);
-    const up =
-      execSafe(`docker compose -p "${project}" ps --format json`, {
-        cwd: wt.path,
-      }) !== null;
+    const result = execSafe(
+      `docker ps -q --filter "label=com.docker.compose.project=${project}"`,
+    );
+    const up = result !== null && result.length > 0;
 
     return {
       index: idx,

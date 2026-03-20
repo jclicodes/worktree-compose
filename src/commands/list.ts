@@ -7,12 +7,11 @@ import { execSafe } from "../utils/exec.js";
 import { warn } from "../utils/log.js";
 import { suggestEnvVar } from "../ports/extract.js";
 
-function isWorktreeUp(projectName: string, wtPath: string): boolean {
+function isWorktreeUp(projectName: string): boolean {
   const result = execSafe(
-    `docker compose -p "${projectName}" ps --format json`,
-    { cwd: wtPath },
+    `docker ps -q --filter "label=com.docker.compose.project=${projectName}"`,
   );
-  return result !== null && result.length > 2;
+  return result !== null && result.length > 0;
 }
 
 export function listCommand(): void {
@@ -58,10 +57,10 @@ export function listCommand(): void {
 
   for (let i = 0; i < ctx.worktrees.length; i++) {
     const wt = ctx.worktrees[i];
-    const idx = i + 1;
+    const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
     const allocations = allocateWorktreePorts(ctx.portMappings, idx);
-    const up = isWorktreeUp(project, wt.path);
+    const up = isWorktreeUp(project);
 
     const ports = allocations
       .map((a) => `${a.serviceName}:${a.port}`)

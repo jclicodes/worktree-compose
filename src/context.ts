@@ -3,6 +3,7 @@ import { parseComposeFile } from "./compose/parse.js";
 import { extractPortMappings } from "./ports/extract.js";
 import { loadConfig } from "./config.js";
 import { getNonMainWorktrees } from "./git/worktree.js";
+import { resolveStableIndices } from "./state.js";
 import type { ComposeFile } from "./compose/types.js";
 import type { PortMapping } from "./ports/types.js";
 import type { WtcConfig } from "./config.js";
@@ -15,6 +16,8 @@ export interface WtcContext {
   portMappings: PortMapping[];
   config: WtcConfig;
   worktrees: WorktreeInfo[];
+  /** Stable index per worktree branch, persisted across runs */
+  stableIndices: Map<string, number>;
 }
 
 export function buildContext(): WtcContext {
@@ -32,8 +35,9 @@ export function buildContext(): WtcContext {
   const portMappings = extractPortMappings(composeFile.services);
   const config = loadConfig(repoRoot);
   const worktrees = getNonMainWorktrees(repoRoot);
+  const stableIndices = resolveStableIndices(repoRoot, worktrees);
 
-  return { repoRoot, repoName, composeFile, portMappings, config, worktrees };
+  return { repoRoot, repoName, composeFile, portMappings, config, worktrees, stableIndices };
 }
 
 export function filterWorktrees(
