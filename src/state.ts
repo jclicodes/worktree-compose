@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { exec } from "./utils/exec.js";
 import type { WorktreeInfo } from "./git/worktree.js";
 
 interface ProjectState {
@@ -44,6 +45,21 @@ function saveGlobalState(state: GlobalState): void {
 }
 
 /**
+ * Resolve the canonical (main worktree) root for a repo, so that all
+ * worktrees share the same state key regardless of which one you're in.
+ */
+function canonicalRepoRoot(repoRoot: string): string {
+  // git-common-dir points to the shared .git dir; for worktrees it's
+  // something like /path/to/main/.git/worktrees/<name>, but the common
+  // dir itself is /path/to/main/.git — its parent is the main worktree.
+  const commonDir = exec("git rev-parse --git-common-dir", { cwd: repoRoot });
+  const resolved = path.resolve(repoRoot, commonDir);
+  // For the main worktree, commonDir is just ".git", resolved parent is repoRoot.
+  // For linked worktrees, commonDir is "/abs/path/to/main/.git", parent is main root.
+  return path.dirname(resolved);
+}
+
+/**
  * Returns a stable index for each worktree. Indices are persisted so they
  * don't shift when worktrees are added or removed.
  *
@@ -56,7 +72,22 @@ export function resolveStableIndices(
   worktrees: WorktreeInfo[],
 ): Map<string, number> {
   const global = loadGlobalState();
-  const project = global.projects[repoRoot] ?? { indices: {} };
+  const canonical = canonicalRepoRoot(repoRoot);
+
+  // Migrate: if state exists under the old (non-canonical) key, merge it in
+  if (repoRoot !== canonical && global.projects[repoRoot]) {
+    const old = global.projects[repoRoot];
+    const existing = global.projects[canonical] ?? { indices: {} };
+    for (const [branch, idx] of Object.entries(old.indices)) {
+      if (!(branch in existing.indices)) {
+        existing.indices[branch] = idx;
+      }
+    }
+    global.projects[canonical] = existing;
+    delete global.projects[repoRoot];
+  }
+
+  const project = global.projects[canonical] ?? { indices: {} };
   const activeBranches = new Set(worktrees.map((wt) => wt.branch));
 
   // Prune entries for worktrees that no longer exist
@@ -77,7 +108,7 @@ export function resolveStableIndices(
     }
   }
 
-  global.projects[repoRoot] = project;
+  global.projects[canonical] = project;
   saveGlobalState(global);
 
   return new Map(

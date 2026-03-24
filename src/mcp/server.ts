@@ -7,7 +7,6 @@ import { composeProjectName } from "../utils/sanitize.js";
 import { exec, execSafe } from "../utils/exec.js";
 import { syncWorktreeFiles } from "../sync/files.js";
 import { copyBaseEnv, injectPortOverrides } from "../sync/env.js";
-import { getRepoRoot } from "../compose/detect.js";
 import { getWorktreeByIndex, getWorktreeBranch } from "../git/worktree.js";
 import {
   getChangedFiles,
@@ -20,7 +19,7 @@ function startWorktrees(indices: number[]): string {
   const ctx = buildContext();
   if (ctx.worktrees.length === 0) return "No worktrees found.";
 
-  const targets = filterWorktrees(ctx.worktrees, indices);
+  const targets = filterWorktrees(ctx.worktrees, indices, ctx.stableIndices);
   const results: string[] = [];
 
   for (const wt of targets) {
@@ -49,7 +48,7 @@ function stopWorktrees(indices: number[]): string {
   const ctx = buildContext();
   if (ctx.worktrees.length === 0) return "No worktrees found.";
 
-  const targets = filterWorktrees(ctx.worktrees, indices);
+  const targets = filterWorktrees(ctx.worktrees, indices, ctx.stableIndices);
   const results: string[] = [];
 
   for (const wt of targets) {
@@ -90,23 +89,23 @@ function listWorktrees(): object {
 }
 
 function promoteWorktree(index: number): string {
-  const repoRoot = getRepoRoot();
-  const wt = getWorktreeByIndex(repoRoot, index);
+  const ctx = buildContext();
+  const wt = getWorktreeByIndex(ctx.repoRoot, index, ctx.stableIndices);
   if (!wt) return `Worktree index ${index} not found.`;
 
-  const currentBranch = getWorktreeBranch(repoRoot);
-  const files = getChangedFiles(repoRoot, wt.path, currentBranch, wt.branch);
+  const currentBranch = getWorktreeBranch(ctx.repoRoot);
+  const files = getChangedFiles(ctx.repoRoot, wt.path, currentBranch, wt.branch);
 
   if (files.length === 0) return "No changes to promote.";
 
-  const dirtyFiles = getLocalDirtyFiles(repoRoot);
+  const dirtyFiles = getLocalDirtyFiles(ctx.repoRoot);
   const conflicts = findConflicts(files, dirtyFiles);
 
   if (conflicts.length > 0) {
     return `Abort: ${conflicts.length} file(s) have uncommitted changes: ${conflicts.join(", ")}`;
   }
 
-  promoteFiles(repoRoot, wt.path, files);
+  promoteFiles(ctx.repoRoot, wt.path, files);
   return `Promoted ${files.length} file(s) from worktree ${index} (${wt.branch}) into ${currentBranch}:\n${files.join("\n")}`;
 }
 
@@ -182,6 +181,30 @@ export async function startMcpServer(): Promise<void> {
             {
               type: "text",
               text: `Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    "wtc_prune",
+    "Pull main, find worktrees whose branches have been merged, stop their containers and remove the worktrees. Keeps branches.",
+    {},
+    async () => {
+      const { pruneCommand } = await import("../commands/prune.js");
+      try {
+        pruneCommand();
+        return {
+          content: [{ type: "text", text: "Prune complete." }],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Prune failed: ${err instanceof Error ? err.message : String(err)}`,
             },
           ],
         };

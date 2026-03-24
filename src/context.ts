@@ -43,12 +43,19 @@ export function buildContext(): WtcContext {
 export function filterWorktrees(
   worktrees: WorktreeInfo[],
   indices: number[],
+  stableIndices: Map<string, number>,
 ): WorktreeInfo[] {
   if (indices.length === 0) return worktrees;
-  return indices
-    .map((i) => {
-      const wt = worktrees[i - 1];
-      if (!wt) throw new Error(`Worktree index ${i} not found. Run 'wtc list' to see available worktrees.`);
-      return wt;
-    });
+
+  const indexToWorktree = new Map<number, WorktreeInfo>();
+  for (const wt of worktrees) {
+    const idx = stableIndices.get(wt.branch);
+    if (idx !== undefined) indexToWorktree.set(idx, wt);
+  }
+
+  return indices.map((i) => {
+    const wt = indexToWorktree.get(i);
+    if (!wt) throw new Error(`Worktree index ${i} not found. Run 'wtc list' to see available worktrees.`);
+    return wt;
+  });
 }

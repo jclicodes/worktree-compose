@@ -6,6 +6,7 @@ import { restartCommand } from "./commands/restart.js";
 import { listCommand } from "./commands/list.js";
 import { promoteCommand } from "./commands/promote.js";
 import { cleanCommand } from "./commands/clean.js";
+import { pruneCommand } from "./commands/prune.js";
 import { startMcpServer } from "./mcp/server.js";
 import { error } from "./utils/log.js";
 
@@ -61,6 +62,13 @@ program
   .description("Stop all containers, remove all worktrees, prune everything")
   .action(() => {
     wrap(() => cleanCommand());
+  });
+
+program
+  .command("prune")
+  .description("Remove worktrees whose branches have been merged into main")
+  .action(() => {
+    wrap(() => pruneCommand());
   });
 
 program

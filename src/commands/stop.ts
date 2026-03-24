@@ -11,7 +11,7 @@ export function stopCommand(indices: number[]): void {
     return;
   }
 
-  const targets = filterWorktrees(ctx.worktrees, indices);
+  const targets = filterWorktrees(ctx.worktrees, indices, ctx.stableIndices);
 
   for (const wt of targets) {
     const idx = ctx.stableIndices.get(wt.branch)!;

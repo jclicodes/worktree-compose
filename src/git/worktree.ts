@@ -45,9 +45,13 @@ export function getNonMainWorktrees(repoRoot: string): WorktreeInfo[] {
 export function getWorktreeByIndex(
   repoRoot: string,
   index: number,
+  stableIndices: Map<string, number>,
 ): WorktreeInfo | null {
   const nonMain = getNonMainWorktrees(repoRoot);
-  return nonMain[index - 1] ?? null;
+  for (const wt of nonMain) {
+    if (stableIndices.get(wt.branch) === index) return wt;
+  }
+  return null;
 }
 
 export function getWorktreeBranch(wtPath: string): string {

@@ -2,6 +2,7 @@ import { getRepoRoot } from "../compose/detect.js";
 import {
   getWorktreeByIndex,
   getWorktreeBranch,
+  getNonMainWorktrees,
 } from "../git/worktree.js";
 import {
   getChangedFiles,
@@ -9,11 +10,14 @@ import {
   findConflicts,
   promoteFiles,
 } from "../git/promote.js";
+import { resolveStableIndices } from "../state.js";
 import * as log from "../utils/log.js";
 
 export function promoteCommand(index: number): void {
   const repoRoot = getRepoRoot();
-  const wt = getWorktreeByIndex(repoRoot, index);
+  const worktrees = getNonMainWorktrees(repoRoot);
+  const stableIndices = resolveStableIndices(repoRoot, worktrees);
+  const wt = getWorktreeByIndex(repoRoot, index, stableIndices);
 
   if (!wt) {
     log.error(
