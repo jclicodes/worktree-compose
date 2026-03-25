@@ -56,5 +56,5 @@ export function startCommand(indices: number[]): void {
   }
 
   console.log("");
-  listCommand();
+  listCommand(ctx);
 }

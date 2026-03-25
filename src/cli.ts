@@ -7,6 +7,7 @@ import { listCommand } from "./commands/list.js";
 import { promoteCommand } from "./commands/promote.js";
 import { cleanCommand } from "./commands/clean.js";
 import { pruneCommand } from "./commands/prune.js";
+import { logsCommand } from "./commands/logs.js";
 import { startMcpServer } from "./mcp/server.js";
 import { error } from "./utils/log.js";
 
@@ -62,6 +63,15 @@ program
   .description("Stop all containers, remove all worktrees, prune everything")
   .action(() => {
     wrap(() => cleanCommand());
+  });
+
+program
+  .command("logs")
+  .description("Show Docker Compose logs for worktrees")
+  .argument("[indices...]", "Worktree indices to show logs for (omit for all)")
+  .option("-f, --follow", "Follow log output")
+  .action((indices: string[], opts: { follow?: boolean }) => {
+    wrap(() => logsCommand(indices.map(Number), opts.follow ?? false));
   });
 
 program

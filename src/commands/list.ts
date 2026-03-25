@@ -1,6 +1,6 @@
 import Table from "cli-table3";
 import chalk from "chalk";
-import { buildContext } from "../context.js";
+import { buildContext, type WtcContext } from "../context.js";
 import { allocateWorktreePorts } from "../ports/allocate.js";
 import { composeProjectName } from "../utils/sanitize.js";
 import { execSafe } from "../utils/exec.js";
@@ -14,8 +14,8 @@ function isWorktreeUp(projectName: string): boolean {
   return result !== null && result.length > 0;
 }
 
-export function listCommand(): void {
-  const ctx = buildContext();
+export function listCommand(existingCtx?: WtcContext): void {
+  const ctx = existingCtx ?? buildContext();
 
   const rawPorts = ctx.portMappings.filter((m) => m.envVar === null);
   for (const p of rawPorts) {

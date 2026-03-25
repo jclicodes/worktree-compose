@@ -9,10 +9,11 @@ const COMPOSE_FILENAMES = [
   "docker-compose.yml",
 ];
 
+/** Resolves to the main worktree root via git-common-dir, not the current worktree. */
 export function getRepoRoot(cwd?: string): string {
-  return exec("git rev-parse --show-toplevel", {
-    cwd: cwd ?? process.cwd(),
-  });
+  const effectiveCwd = cwd ?? process.cwd();
+  const commonDir = exec("git rev-parse --git-common-dir", { cwd: effectiveCwd });
+  return path.dirname(path.resolve(effectiveCwd, commonDir));
 }
 
 export function getRepoName(repoRoot: string): string {
