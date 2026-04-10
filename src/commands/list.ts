@@ -1,6 +1,6 @@
 import Table from "cli-table3";
 import chalk from "chalk";
-import { buildContext, type WtcContext } from "../context.js";
+import { buildContext, resolveCompose, type WtcContext } from "../context.js";
 import { allocateWorktreePorts } from "../ports/allocate.js";
 import { composeProjectName } from "../utils/sanitize.js";
 import { execSafe } from "../utils/exec.js";
@@ -55,11 +55,33 @@ export function listCommand(existingCtx?: WtcContext): void {
     chalk.dim(defaultPorts),
   ]);
 
-  for (let i = 0; i < ctx.worktrees.length; i++) {
-    const wt = ctx.worktrees[i];
-    const idx = ctx.stableIndices.get(wt.branch)!;
+  // Build a map of index → worktree for occupied slots
+  const indexToWorktree = new Map(
+    ctx.worktrees.map((wt) => [ctx.stableIndices.get(wt.branch)!, wt]),
+  );
+
+  // Find the max index to know how far to iterate
+  const maxIndex = Math.max(...indexToWorktree.keys());
+
+  for (let idx = 1; idx <= maxIndex; idx++) {
+    const wt = indexToWorktree.get(idx);
+
+    if (!wt) {
+      // Empty slot — show as unassigned
+      table.push([
+        chalk.dim(String(idx)),
+        chalk.dim("-"),
+        chalk.dim("-"),
+        chalk.dim("-"),
+        chalk.dim("-"),
+      ]);
+      continue;
+    }
+
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
-    const allocations = allocateWorktreePorts(ctx.portMappings, idx);
+    const wtCompose = resolveCompose(wt.path);
+    const mappings = wtCompose?.portMappings ?? ctx.portMappings;
+    const allocations = allocateWorktreePorts(mappings, idx);
     const up = isWorktreeUp(project);
 
     const ports = allocations

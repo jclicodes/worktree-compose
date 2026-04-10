@@ -45,19 +45,12 @@ function getDockerfiles(
 export function syncWorktreeFiles(
   repoRoot: string,
   wtPath: string,
-  composeFile: ComposeFile,
+  _composeFile: ComposeFile,
   extraSync?: string[],
 ): void {
-  const composeRel = path.relative(repoRoot, composeFile.composePath);
-  copyFile(
-    path.join(repoRoot, composeRel),
-    path.join(wtPath, composeRel),
-  );
-
-  for (const df of getDockerfiles(composeFile, repoRoot)) {
-    copyFile(path.join(repoRoot, df), path.join(wtPath, df));
-  }
-
+  // Compose files and Dockerfiles live in the worktree's own working tree
+  // (from the branch), so we no longer overwrite them from the main root.
+  // Only sync extra user-configured files (typically untracked infra files).
   if (extraSync) {
     for (const p of extraSync) {
       const src = path.join(repoRoot, p);

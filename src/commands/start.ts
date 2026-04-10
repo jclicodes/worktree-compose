@@ -1,4 +1,4 @@
-import { buildContext, filterWorktrees } from "../context.js";
+import { buildContext, filterWorktrees, resolveCompose } from "../context.js";
 import { allocateWorktreePorts } from "../ports/allocate.js";
 import { composeProjectName } from "../utils/sanitize.js";
 import { execLive } from "../utils/exec.js";
@@ -22,7 +22,10 @@ export function startCommand(indices: number[]): void {
   for (const wt of targets) {
     const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
-    const allocations = allocateWorktreePorts(ctx.portMappings, idx);
+
+    // Read compose from the worktree's own working tree, fall back to main root
+    const wtCompose = resolveCompose(wt.path) ?? { composeFile: ctx.composeFile, portMappings: ctx.portMappings };
+    const allocations = allocateWorktreePorts(wtCompose.portMappings, idx);
 
     log.header(`Worktree ${idx}: ${wt.branch}`);
     log.info(`Path:    ${wt.path}`);
@@ -34,7 +37,7 @@ export function startCommand(indices: number[]): void {
     syncWorktreeFiles(
       ctx.repoRoot,
       wt.path,
-      ctx.composeFile,
+      wtCompose.composeFile,
       ctx.config.sync,
     );
     log.success("Synced infrastructure files");

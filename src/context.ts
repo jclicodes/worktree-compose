@@ -12,6 +12,7 @@ import type { WorktreeInfo } from "./git/worktree.js";
 export interface WtcContext {
   repoRoot: string;
   repoName: string;
+  /** Compose file from the main worktree root (used as fallback) */
   composeFile: ComposeFile;
   portMappings: PortMapping[];
   config: WtcConfig;
@@ -20,19 +21,30 @@ export interface WtcContext {
   stableIndices: Map<string, number>;
 }
 
+/**
+ * Resolve compose file and port mappings for a specific directory.
+ * Used to read compose from a worktree's own working tree.
+ */
+export function resolveCompose(dir: string): { composeFile: ComposeFile; portMappings: PortMapping[] } | null {
+  const composePath = detectComposeFile(dir);
+  if (!composePath) return null;
+  const composeFile = parseComposeFile(composePath);
+  const portMappings = extractPortMappings(composeFile.services);
+  return { composeFile, portMappings };
+}
+
 export function buildContext(): WtcContext {
   const repoRoot = getRepoRoot();
   const repoName = getRepoName(repoRoot);
 
-  const composePath = detectComposeFile(repoRoot);
-  if (!composePath) {
+  const resolved = resolveCompose(repoRoot);
+  if (!resolved) {
     throw new Error(
       `No compose file found in ${repoRoot}. Expected one of: compose.yaml, compose.yml, docker-compose.yaml, docker-compose.yml`,
     );
   }
 
-  const composeFile = parseComposeFile(composePath);
-  const portMappings = extractPortMappings(composeFile.services);
+  const { composeFile, portMappings } = resolved;
   const config = loadConfig(repoRoot);
   const worktrees = getNonMainWorktrees(repoRoot);
   const stableIndices = resolveStableIndices(repoRoot, worktrees);

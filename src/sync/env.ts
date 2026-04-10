@@ -63,9 +63,13 @@ export function injectPortOverrides(
 }
 
 export function copyBaseEnv(repoRoot: string, wtPath: string): void {
+  const envDst = path.join(wtPath, ".env");
+
+  // Don't overwrite an existing .env — the worktree may have local customizations
+  if (fs.existsSync(envDst)) return;
+
   const envSrc = path.join(repoRoot, ".env");
   const envExampleSrc = path.join(repoRoot, ".env.example");
-  const envDst = path.join(wtPath, ".env");
 
   if (fs.existsSync(envSrc)) {
     fs.copyFileSync(envSrc, envDst);

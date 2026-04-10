@@ -43,21 +43,31 @@ export function allocateWorktreePorts(
 ): PortAllocation[] {
   const overridable = mappings.filter((m) => m.envVar !== null);
 
-  const allocations: PortAllocation[] = overridable.map((m) => ({
-    serviceName: m.serviceName,
-    envVar: m.envVar!,
-    port: allocatePort(m.defaultPort, worktreeIndex),
-    containerPort: m.containerPort,
-  }));
+  const used = new Set<number>();
+  const allocations: PortAllocation[] = [];
 
-  const seen = new Set<number>();
-  for (const a of allocations) {
-    if (seen.has(a.port)) {
+  for (const m of overridable) {
+    let port = allocatePort(m.defaultPort, worktreeIndex);
+
+    // Resolve collisions by bumping to the next available port in the block
+    while (used.has(port)) {
+      port++;
+    }
+
+    if (port > 65535 || port < 1024) {
       throw new Error(
-        `Port collision: ${a.port} is assigned to multiple services in worktree ${worktreeIndex}.`,
+        `Cannot allocate port for service "${m.serviceName}" at worktree index ${worktreeIndex}. ` +
+          `Computed port ${port} is out of valid range (1024-65535).`,
       );
     }
-    seen.add(a.port);
+
+    used.add(port);
+    allocations.push({
+      serviceName: m.serviceName,
+      envVar: m.envVar!,
+      port,
+      containerPort: m.containerPort,
+    });
   }
 
   return allocations;

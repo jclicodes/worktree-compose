@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { buildContext, filterWorktrees } from "../context.js";
+import { buildContext, filterWorktrees, resolveCompose } from "../context.js";
 import { allocateWorktreePorts } from "../ports/allocate.js";
 import { composeProjectName } from "../utils/sanitize.js";
 import { exec, execSafe } from "../utils/exec.js";
@@ -25,9 +25,10 @@ function startWorktrees(indices: number[]): string {
   for (const wt of targets) {
     const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
-    const allocations = allocateWorktreePorts(ctx.portMappings, idx);
+    const wtCompose = resolveCompose(wt.path) ?? { composeFile: ctx.composeFile, portMappings: ctx.portMappings };
+    const allocations = allocateWorktreePorts(wtCompose.portMappings, idx);
 
-    syncWorktreeFiles(ctx.repoRoot, wt.path, ctx.composeFile, ctx.config.sync);
+    syncWorktreeFiles(ctx.repoRoot, wt.path, wtCompose.composeFile, ctx.config.sync);
     copyBaseEnv(ctx.repoRoot, wt.path);
     injectPortOverrides(
       `${wt.path}/.env`,
@@ -71,7 +72,9 @@ function listWorktrees(): object {
   return ctx.worktrees.map((wt) => {
     const idx = ctx.stableIndices.get(wt.branch)!;
     const project = composeProjectName(ctx.repoName, idx, wt.branch);
-    const allocations = allocateWorktreePorts(ctx.portMappings, idx);
+    const wtCompose = resolveCompose(wt.path);
+    const mappings = wtCompose?.portMappings ?? ctx.portMappings;
+    const allocations = allocateWorktreePorts(mappings, idx);
     const result = execSafe(
       `docker ps -q --filter "label=com.docker.compose.project=${project}"`,
     );

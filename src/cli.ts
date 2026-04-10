@@ -7,6 +7,7 @@ import { listCommand } from "./commands/list.js";
 import { promoteCommand } from "./commands/promote.js";
 import { cleanCommand } from "./commands/clean.js";
 import { pruneCommand } from "./commands/prune.js";
+import { deleteCommand } from "./commands/delete.js";
 import { logsCommand } from "./commands/logs.js";
 import { startMcpServer } from "./mcp/server.js";
 import { error } from "./utils/log.js";
@@ -72,6 +73,15 @@ program
   .option("-f, --follow", "Follow log output")
   .action((indices: string[], opts: { follow?: boolean }) => {
     wrap(() => logsCommand(indices.map(Number), opts.follow ?? false));
+  });
+
+program
+  .command("delete")
+  .alias("rm")
+  .description("Delete worktrees by index, stopping containers and freeing ports")
+  .argument("<indices...>", "Worktree indices to delete")
+  .action((indices: string[]) => {
+    wrap(() => deleteCommand(indices.map(Number)));
   });
 
 program
