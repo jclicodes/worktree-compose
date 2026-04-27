@@ -7,7 +7,13 @@ import { copyBaseEnv, injectPortOverrides } from "../sync/env.js";
 import * as log from "../utils/log.js";
 import { listCommand } from "./list.js";
 
-export function startCommand(indices: number[]): void {
+export interface StartOptions {
+  forceRecreate?: boolean;
+  build?: boolean;
+  profiles?: string[];
+}
+
+export function startCommand(indices: number[], opts: StartOptions = {}): void {
   const ctx = buildContext();
 
   if (ctx.worktrees.length === 0) {
@@ -33,6 +39,9 @@ export function startCommand(indices: number[]): void {
     log.info(
       `Ports:   ${allocations.map((a) => `${a.envVar}=${a.port}`).join(" ")}`,
     );
+    if (opts.profiles?.length) {
+      log.info(`Profiles: ${opts.profiles.join(", ")}`);
+    }
 
     syncWorktreeFiles(
       ctx.repoRoot,
@@ -50,7 +59,19 @@ export function startCommand(indices: number[]): void {
     );
     log.success("Injected port overrides into .env");
 
-    execLive(`docker compose -p "${project}" up -d --build`, {
+    // --profile is a project-level flag — must come before `up`.
+    const projectFlagParts: string[] = [];
+    for (const p of opts.profiles ?? []) {
+      projectFlagParts.push(`--profile ${p}`);
+    }
+    const projectFlags = projectFlagParts.length > 0 ? ` ${projectFlagParts.join(" ")}` : "";
+
+    const upFlagParts: string[] = [];
+    if (opts.build) upFlagParts.push("--build");
+    if (opts.forceRecreate) upFlagParts.push("--force-recreate");
+    const upFlags = upFlagParts.length > 0 ? ` ${upFlagParts.join(" ")}` : "";
+
+    execLive(`docker compose -p "${project}"${projectFlags} up -d${upFlags}`, {
       cwd: wt.path,
       env: { ...process.env, COMPOSE_PROJECT_NAME: project },
     });

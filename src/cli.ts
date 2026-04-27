@@ -23,8 +23,20 @@ program
   .command("start")
   .description("Start Docker Compose stacks for worktrees")
   .argument("[indices...]", "Worktree indices to start (omit for all)")
-  .action((indices: string[]) => {
-    wrap(() => startCommand(indices.map(Number)));
+  .option("--build", "Rebuild images before starting (default: only rebuild if context changed)")
+  .option(
+    "-p, --profile <name>",
+    "Compose profile to activate (repeatable; sets COMPOSE_PROFILES)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .action((indices: string[], opts: { build?: boolean; profile: string[] }) => {
+    wrap(() =>
+      startCommand(indices.map(Number), {
+        build: opts.build,
+        profiles: opts.profile,
+      }),
+    );
   });
 
 program
@@ -38,10 +50,38 @@ program
 program
   .command("restart")
   .description("Restart Docker Compose stacks for worktrees")
-  .argument("[indices...]", "Worktree indices to restart (omit for all)")
-  .action((indices: string[]) => {
-    wrap(() => restartCommand(indices.map(Number)));
-  });
+  .argument("[args...]", "Worktree indices and optional service names to restart")
+  .option("--force-recreate", "Force recreate containers even if config hasn't changed")
+  .option("--build", "Rebuild images before restarting (default: only rebuild if context changed)")
+  .option(
+    "-p, --profile <name>",
+    "Compose profile to activate on full restart (repeatable)",
+    (val: string, prev: string[]) => [...prev, val],
+    [] as string[],
+  )
+  .action(
+    (
+      args: string[],
+      opts: { forceRecreate?: boolean; build?: boolean; profile: string[] },
+    ) => {
+      const indices: number[] = [];
+      const services: string[] = [];
+      for (const arg of args) {
+        if (/^\d+$/.test(arg)) {
+          indices.push(Number(arg));
+        } else {
+          services.push(arg);
+        }
+      }
+      wrap(() =>
+        restartCommand(indices, services, {
+          forceRecreate: opts.forceRecreate,
+          build: opts.build,
+          profiles: opts.profile,
+        }),
+      );
+    },
+  );
 
 program
   .command("list")
