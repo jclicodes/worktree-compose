@@ -1,6 +1,6 @@
 {
   "name": "worktree-compose",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Zero-config Docker Compose isolation for git worktrees",
   "type": "module",
   "bin": {
@@ -17,7 +17,7 @@
     "build": "tsc",
     "dev": "tsx src/cli.ts",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
     "git",
@@ -31,12 +31,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LevwTech/worktree-compose.git"
+    "url": "git+https://github.com/jclicodes/worktree-compose.git"
   },
   "bugs": {
-    "url": "https://github.com/LevwTech/worktree-compose/issues"
+    "url": "https://github.com/jclicodes/worktree-compose/issues"
   },
-  "homepage": "https://github.com/LevwTech/worktree-compose#readme",
+  "homepage": "https://github.com/jclicodes/worktree-compose#readme",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
